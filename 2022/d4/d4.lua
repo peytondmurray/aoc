@@ -9,7 +9,9 @@ end
 local function get_range(rangestr)
     -- String range: 1-3
     local dash = rangestr:find('-')
-    return {tonumber(rangestr:sub(1, dash)), tonumber(rangestr:sub(dash+1))}
+    local low = tonumber(rangestr:sub(1, dash-1))
+    local high = tonumber(rangestr:sub(dash+1))
+    return {low, high}
 end
 
 local function parse(data)
@@ -17,12 +19,9 @@ local function parse(data)
     for _, elfpair in pairs(data) do
         local comma = elfpair:find(',')
         if comma then
-            elves[#elves+1] = {
-                {
-                    get_range(elfpair:sub(1, comma-1)),
-                    get_range(elfpair:sub(comma+1))
-                }
-            }
+            local left = get_range(elfpair:sub(1, comma-1))
+            local right = get_range(elfpair:sub(comma+1))
+            elves[#elves+1] = {left, right}
         end
     end
     return elves
@@ -30,9 +29,9 @@ end
 
 local function does_pair_overlap(elfpair)
     return (
-        elfpair[1][1] >= elfpair[2][1] and elfpair[1][1] <= elfpair[2][2]
+        elfpair[1][1] <= elfpair[2][1] and elfpair[1][2] >= elfpair[2][1]
     ) or (
-        elfpair[1][2] >= elfpair[2][1] and elfpair[1][2] <= elfpair[2][2]
+        elfpair[1][1] >= elfpair[2][1] and elfpair[1][1] <= elfpair[2][2]
     )
 end
 
@@ -44,15 +43,13 @@ local function is_pair_contained(elfpair)
     )
 end
 
-local function eleves_overlap(data)
+local function eleves_overlap(data, overlap_func)
     local n_overlaps = 0
     local elves = parse(data)
     for _, elfpair in pairs(elves) do
-        print(elfpair[1], elfpair[2])
-        -- print('[' .. elfpair[1][1] .. ' ' .. elfpair[1][2] .. '] [' .. elfpair[2][1] .. ' ' .. elfpair[2][2] .. ']')
-        -- if is_pair_contained(elfpair) then
-        --     n_overlaps = n_overlaps+1
-        -- end
+        if overlap_func(elfpair) then
+            n_overlaps = n_overlaps+1
+        end
     end
     return n_overlaps
 end
@@ -60,4 +57,7 @@ end
 
 -- p1
 local data = get_data()
-print(eleves_overlap(data))
+print(eleves_overlap(data, is_pair_contained))
+
+-- p2
+print(eleves_overlap(data, does_pair_overlap))
