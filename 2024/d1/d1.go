@@ -82,6 +82,6 @@ func Run() {
 	diff := difference(c1, c2)
 	similarity := similarity(c1, c2)
 
-	fmt.Println("[Part 1] Difference: ", diff)
-	fmt.Println("[Part 2] Similarity: ", similarity)
+	fmt.Println("[d1.1] Difference: ", diff)
+	fmt.Println("[d1.2] Similarity: ", similarity)
 }
