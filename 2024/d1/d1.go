@@ -43,7 +43,7 @@ func readData() ([]int, []int) {
 
 func difference(c1 []int, c2 []int) int {
 	var result int
-	for i := range(len(c1)) {
+	for i := range len(c1) {
 		diff := c1[i] - c2[i]
 
 		if diff < 0 {
@@ -60,13 +60,13 @@ func similarity(c1 []int, c2 []int) int {
 
 	// Get the occurrences of each value in c2
 	c2Counts := make(map[int]int)
-	for _, value := range(c2) {
+	for _, value := range c2 {
 		c2Counts[value] += 1
 	}
 
 	// Similarity is (value)*(occurrences of value in c2)
 	// for each value in c1
-	for _, value := range(c1) {
+	for _, value := range c1 {
 		result += c2Counts[value] * value
 	}
 

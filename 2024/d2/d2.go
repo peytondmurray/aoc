@@ -9,7 +9,6 @@ import (
 	"strings"
 )
 
-
 // Read the data into a ragged array; each value in the
 // returned array is a row in the input file.
 func readData() [][]int {
@@ -48,11 +47,11 @@ func numUnsafe(row []int) int {
 	upper := 3
 
 	diff := row[1] - row[0]
-	if (diff < 0) {
+	if diff < 0 {
 		lower, upper = -1*upper, -1*lower
 	}
 
-	for i := range(len(row) - 1) {
+	for i := range len(row) - 1 {
 		diff = row[i+1] - row[i]
 		if (diff < lower) || (diff > upper) {
 			unsafe += 1
@@ -72,13 +71,13 @@ func isSafeWithRemoval(row []int, removals int) bool {
 	}
 
 	if removals > 0 {
-		for i := range(len(row)) {
+		for i := range len(row) {
 			// Can't use append, as it mutates the input :/
-			newRow := make([]int, len(row) - 1)
+			newRow := make([]int, len(row)-1)
 			copy(newRow[:i], row[:i])
 			copy(newRow[i:], row[i+1:])
 
-			if isSafeWithRemoval(newRow, removals - 1) {
+			if isSafeWithRemoval(newRow, removals-1) {
 				return true
 			}
 		}

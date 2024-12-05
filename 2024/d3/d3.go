@@ -1,6 +1,5 @@
 package d3
 
-
 import (
 	"fmt"
 	"log"
@@ -48,15 +47,14 @@ func extractValues(str string, enableDoDont bool) [][]int {
 func sumPairs(pairs [][]int) int {
 	result := 0
 	for _, pair := range pairs {
-		result += pair[0]*pair[1]
+		result += pair[0] * pair[1]
 	}
 	return result
 }
 
-
 func Run() {
 	str := readData()
 
-	fmt.Println("[d2.1] sum of multiplications: ", sumPairs(extractValues(str, false)))
-	fmt.Println("[d2.2] sum of multiplications with do() and don't(): ", sumPairs(extractValues(str, true)))
+	fmt.Println("[d3.1] sum of multiplications: ", sumPairs(extractValues(str, false)))
+	fmt.Println("[d3.2] sum of multiplications with do() and don't(): ", sumPairs(extractValues(str, true)))
 }
