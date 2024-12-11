@@ -7,6 +7,20 @@ import (
 	"strings"
 )
 
+// Add an item to the set
+func addToSet[T comparable](set map[T]struct{}, item T) {
+	set[item] = struct{}{}
+}
+
+// setToSlice Convert a set to a slice
+func setToSlice[T comparable](set map[T]struct{}) []T {
+	var result []T
+	for item := range set {
+		result = append(result, item)
+	}
+	return result
+}
+
 type Grid struct {
 	locations map[rune][]Location
 	shape [2]int // ysize, xsize
@@ -25,6 +39,7 @@ func (a Location) distanceTo(b Location) (int, int) {
 	return b.x - a.x, b.y - a.y
 }
 
+// pairs Generate a slice containing every pair of inputs
 func pairs(locs []Location) [][2]Location {
 	var results [][2]Location
 	for i := 0; i < len(locs); i++ {
@@ -36,20 +51,75 @@ func pairs(locs []Location) [][2]Location {
 	return results
 }
 
+// isInBounds True if the location is in bounds, false otherwise
 func (a *Grid) isInBounds(loc Location) bool {
 	return loc.x >= 0 && loc.x < a.shape[1] && loc.y >= 0 && loc.y < a.shape[0]
 }
 
+// findAllAntinodes Find all antinodes for every antenna on the grid
 func (a *Grid) findAllAntinodes() []Location {
-	result := map[Location]struct{}{}
-	for char, _ := range a.locations {
+	nodes := map[Location]struct{}{}
 
+	for char := range a.locations {
+		for _, loc := range a.findAntinodes(char) {
+			if _, exists := nodes[loc]; !exists {
+				nodes[loc] = struct{}{}
+			}
+		}
 	}
 
+	return setToSlice(nodes)
 }
 
+
+// findAntinodes Find all antinodes for the given characters
 func (a *Grid) findAntinodes(chars ...rune) []Location {
-	result := map[Location]struct{}{}
+	nodes := map[Location]struct{}{}
+
+	for _, char := range chars {
+		locations := a.locations[char]
+		for _, pair := range pairs(locations) {
+
+			distX, distY := pair[0].distanceTo(pair[1])
+			for i := 0;; i++ {
+				location := pair[0].subtract(i*distX, i*distY)
+				if !a.isInBounds(location) {
+					break
+				}
+				addToSet(nodes, location)
+			}
+			for i := -1;; i-- {
+				location := pair[0].subtract(i*distX, i*distY)
+				if !a.isInBounds(location) {
+					break
+				}
+				addToSet(nodes, location)
+			}
+		}
+	}
+
+	return setToSlice(nodes)
+}
+
+// findAllNearestAntinodes Find the nearest antinodes for every
+// antenna on the grid
+func (a *Grid) findAllNearestAntinodes() []Location {
+	// Use a hashmap cause we don't care about duplicates
+	nodes := map[Location]struct{}{}
+	for char := range a.locations {
+		for _, loc := range a.findNearestAntinodes(char) {
+			if _, exists := nodes[loc]; !exists {
+				nodes[loc] = struct{}{}
+			}
+		}
+	}
+
+	return setToSlice(nodes)
+}
+
+// findNearestAntinodes Find the nearest antinodes for the given characters (part 1)
+func (a *Grid) findNearestAntinodes(chars ...rune) []Location {
+	var result []Location
 
 	for _, char := range chars {
 		locations := a.locations[char]
@@ -71,6 +141,7 @@ func (a *Grid) findAntinodes(chars ...rune) []Location {
 	return result
 }
 
+// print Print the grid with the locations of the antennae
 func (a *Grid) print() {
 	str := a.getBaseGrid()
 
@@ -80,6 +151,8 @@ func (a *Grid) print() {
 	fmt.Println()
 }
 
+// getBaseGrid Get the actual 2D map of the world
+// from the spase list of antennae
 func (a *Grid) getBaseGrid() [][]string {
 	var str [][]string
 	for i := 0; i<a.shape[0]; i++ {
@@ -98,6 +171,8 @@ func (a *Grid) getBaseGrid() [][]string {
 	return str
 }
 
+// printWithAntinodes Print the grid with the locations of the antenne
+// and of the antinodes
 func (a *Grid) printWithAntinodes(nodes []Location) {
 	str := a.getBaseGrid()
 
@@ -114,7 +189,6 @@ func (a *Grid) printWithAntinodes(nodes []Location) {
 
 func readData() Grid {
 	text, err := os.ReadFile("d8/input")
-	// text, err := os.ReadFile("d8/input2")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -130,10 +204,12 @@ func readData() Grid {
 		for j := 0; j < len(line); j++ {
 			char := rune(line[j])
 
-			if _, exists := result[char]; !exists {
-				result[char] = make([]Location, 0)
+			if char != '.' {
+				if _, exists := result[char]; !exists {
+					result[char] = make([]Location, 0)
+				}
+				result[char] = append(result[char], Location{j, i})
 			}
-			result[char] = append(result[char], Location{j, i})
 		}
 	}
 	return Grid{result, [2]int{len(lines), len(lines[0])}}
@@ -141,11 +217,10 @@ func readData() Grid {
 
 func Run() {
 	grid := readData()
-	grid.print()
 
-	nodes := grid.findAntinodes('a')
+	nodes := grid.findAllNearestAntinodes()
 	grid.printWithAntinodes(nodes)
 
-	// fmt.Println("[d7.1] : ", )
-	// fmt.Println("[d7.2] : ", nLoops)
+	fmt.Println("[d8.1] number of nearest antinodes: ", len(grid.findAllNearestAntinodes()))
+	fmt.Println("[d8.2] number of antinodes: ", len(grid.findAllAntinodes()))
 }
