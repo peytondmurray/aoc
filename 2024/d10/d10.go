@@ -48,6 +48,7 @@ type Location struct {
 	y int
 }
 
+// findZeros Find the locations of every distinct zero on the trailmap.
 func findZeros(trailmap [][]int) []Location {
 	var zeros []Location
 	for i, row := range trailmap {
@@ -87,6 +88,7 @@ func neighbors(trailmap [][]int, location *Location) map[Location]int {
 	return result
 }
 
+// newNodeTree Generate a new node tree from the given location.
 func newNodeTree(trailmap [][]int, location *Location) Node {
 	value := trailmap[location.y][location.x]
 
@@ -104,6 +106,7 @@ func newNodeTree(trailmap [][]int, location *Location) Node {
 	}
 }
 
+// newTree Generate a new (root) tree from the trailmap.
 func newTree(trailmap [][]int) Node {
 	zeros := findZeros(trailmap)
 
@@ -116,8 +119,8 @@ func newTree(trailmap [][]int) Node {
 	return Node{roots, nil, -1}
 }
 
-// Number of nine-height positions from each trailhead (value == 0)
-func calculateScore(node *Node, distinctTrails map[Location]struct{}) int {
+// getTrailheadScore Return the number of nine-height positions from each trailhead (value == 0).
+func getTrailheadScore(node *Node, distinctTrails map[Location]struct{}) int {
 	loc := node.location
 
 	// If this is the dummy root node, don't check for its presence in distinct trails,
@@ -136,19 +139,41 @@ func calculateScore(node *Node, distinctTrails map[Location]struct{}) int {
 
 	values := 0
 	for _, child := range node.children {
-		values += calculateScore(&child, distinctTrails)
+		values += getTrailheadScore(&child, distinctTrails)
 	}
 	return values
 }
 
-func trailheadScore(root *Node) int {
+// getRating Get the number of distinct trails accessible from each zero-valued location.
+func getRating(node *Node) int {
+	loc := node.location
+
+	// If this is the dummy root node, don't check for its presence in distinct trails,
+	// just add up the score of its children
+	if loc != nil {
+		if node.value == 9 {
+			return 1
+		}
+	}
+
+	values := 0
+	for _, child := range node.children {
+		values += getRating(&child)
+	}
+	return values
+
+}
+
+// getRootTrailheadScore Get the trailhead score from the root node.
+func getRootTrailheadScore(root *Node) int {
 	score := 0
 	for _, child := range root.children {
-		score += calculateScore(&child, map[Location]struct{}{})
+		score += getTrailheadScore(&child, map[Location]struct{}{})
 	}
 	return score
 }
 
+// printNode Print some information about a node.
 func (a *Node) printNode() {
 	if a.location != nil {
 		fmt.Println("Location: ", a.location.x, a.location.y, "Value :", a.value)
@@ -159,6 +184,7 @@ func (a *Node) printNode() {
 	}
 }
 
+// printTree Print a tree. Child node stats are prefixed by `indent`.
 func (a *Node) printTree(indent string) {
 	if a.location == nil {
 		fmt.Println("---Tree---")
@@ -178,6 +204,6 @@ func Run() {
 
 	tree := newTree(trailmap)
 
-	fmt.Println("[d10.1] trailhead score: ", trailheadScore(&tree))
-	fmt.Println("[d10.2] trailhead rating: ", calculateScore(&tree, map[Location]struct{}{}))
+	fmt.Println("[d10.1] trailhead score: ", getRootTrailheadScore(&tree))
+	fmt.Println("[d10.2] trailhead rating: ", getRating(&tree))
 }
