@@ -5,7 +5,7 @@ import (
 	"log"
 	// "math"
 	"os"
-	"runtime/pprof"
+	// "runtime/pprof"
 	"strconv"
 	"strings"
 )
@@ -41,6 +41,15 @@ func intPow(val int, exp int) int {
 	return result
 }
 
+func countDigits(val int) int {
+	digits := 1
+	for (val / 10 != 0) {
+		val /= 10
+		digits += 1
+	}
+	return digits
+}
+
 func step(stones []int) []int {
 	// 1. if the stone of value 0, it is replaced by a stone with value 1
 	var newStones []int
@@ -49,24 +58,24 @@ func step(stones []int) []int {
 			newStones = append(newStones, 1)
 		} else {
 
-			str := strconv.Itoa(stone)
-			if len(str) % 2 == 0 {
-
-				left, err := strconv.Atoi(str[:len(str)/2])
-				if err != nil {
-					log.Fatal("Invalid stone")
-				}
-
-				right, err := strconv.Atoi(str[len(str)/2:])
-				if err != nil {
-					log.Fatal("Invalid stone")
-				}
-				newStones = append(newStones, left)
-				newStones = append(newStones, right)
-
-			} else {
-				newStones = append(newStones, stone*2024)
-			}
+			// str := strconv.Itoa(stone)
+			// if len(str) % 2 == 0 {
+			//
+			// 	left, err := strconv.Atoi(str[:len(str)/2])
+			// 	if err != nil {
+			// 		log.Fatal("Invalid stone")
+			// 	}
+			//
+			// 	right, err := strconv.Atoi(str[len(str)/2:])
+			// 	if err != nil {
+			// 		log.Fatal("Invalid stone")
+			// 	}
+			// 	newStones = append(newStones, left)
+			// 	newStones = append(newStones, right)
+			//
+			// } else {
+			// 	newStones = append(newStones, stone*2024)
+			// }
 
 			// nDigits := (int(math.Log10(float64(stone))) + 1)
 			// if nDigits % 2 == 0 {
@@ -86,6 +95,25 @@ func step(stones []int) []int {
 			// } else {
 			// 	newStones = append(newStones, stone*2024)
 			// }
+
+			nDigits := countDigits(stone)
+			if nDigits % 2 == 0 {
+				factor := intPow(10, nDigits/2)
+
+				// Find the first new stone value by moving the decimal over
+				// by half the number of digits; int division drops the right
+				// half of the digits
+				left := stone / factor
+
+				// Second new stone value is just the original value of the stone
+				// minus the first half of the digits
+				right := stone - (left*factor)
+
+				newStones = append(newStones, left)
+				newStones = append(newStones, right)
+			} else {
+				newStones = append(newStones, stone*2024)
+			}
 		}
 	}
 	return newStones
@@ -105,18 +133,18 @@ func blink(stones []int, n int) []int {
 func Run() {
 	stones := readData()
 
-	f, err := os.Create("cpu_str.prof")
-	if err != nil {
-		log.Fatal("Couldn't create CPU profile: ", err)
-	}
-	defer f.Close()
-
-	if err := pprof.StartCPUProfile(f); err != nil {
-		log.Fatal("Couldn't start CPU profile: ", err)
-	}
-	defer pprof.StopCPUProfile()
+	// f, err := os.Create("cpu_fast_digits.prof")
+	// if err != nil {
+	// 	log.Fatal("Couldn't create CPU profile: ", err)
+	// }
+	// defer f.Close()
+	//
+	// if err := pprof.StartCPUProfile(f); err != nil {
+	// 	log.Fatal("Couldn't start CPU profile: ", err)
+	// }
+	// defer pprof.StopCPUProfile()
 
 	// fmt.Println("[d11.1] Number of stones after 25 blinks: ", len(blink(stones, 25)))
-	fmt.Println("[d11.2] Number of stones after 25 blinks: ", len(blink(stones, 40)))
-	// fmt.Println("[d11.2] Number of stones after 25 blinks: ", len(blink(stones, 75)))
+	// fmt.Println("[d11.2] Number of stones after 25 blinks: ", len(blink(stones, 40)))
+	fmt.Println("[d11.2] Number of stones after 25 blinks: ", len(blink(stones, 75)))
 }
