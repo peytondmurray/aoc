@@ -25,7 +25,6 @@ func power(a int, b int) int {
 	}
 	return result
 }
-// fmt.Printf("Output: %20d Calculations: %5d len(inputs): %3d expected calculations: %5d\n", output, len(calculations), len(inputs), power(2, len(inputs) - 1))
 
 func readData() ([]int, [][]int) {
 	// file, err := os.Open("d7/input2")
