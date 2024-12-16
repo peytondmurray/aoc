@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"log"
 	"os"
-	// "runtime/pprof"
 	"strconv"
 	"strings"
 )
 
+// readData Read in the data, return an array of stones.
 func readData() []int {
-	text, err := os.ReadFile("d11/input2")
-	// text, err := os.ReadFile("d11/input")
+	// text, err := os.ReadFile("d11/input2")
+	text, err := os.ReadFile("d11/input")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -29,6 +29,7 @@ func readData() []int {
 	return values
 }
 
+// intPow Compute the integer power, val^exp.
 func intPow(val int, exp int) int {
 	if exp == 0 {
 		return 1
@@ -40,6 +41,8 @@ func intPow(val int, exp int) int {
 	return result
 }
 
+// countDigits Count the number of digits in a value. Significantly faster
+// than int(math.Log10(val)) + 1.
 func countDigits(val int) int {
 	digits := 1
 	for (val / 10 != 0) {
@@ -49,6 +52,8 @@ func countDigits(val int) int {
 	return digits
 }
 
+// stepSimple First attempt at a pure iterative approach to computing the stones.
+// Doesn't work well past 45 blinks.
 func stepSimple(stones []int) []int {
 	// 1. if the stone of value 0, it is replaced by a stone with value 1
 	var newStones []int
@@ -79,10 +84,13 @@ func stepSimple(stones []int) []int {
 	return newStones
 }
 
+// stepPreallocate Compute the stones after a single blink. Doesn't really
+// work for anything much larger than 45 blinks. Preallocates space for the
+// stones by assuming that every stone will split into two. Significantly
+// faster (~50% of the run time) of `stepSimple`, but still too slow.
 func stepPreallocate(stones []int) []int {
 	// 1. if the stone of value 0, it is replaced by a stone with value 1
 	// var newStones []int
-
 	nStones := 0
 	newStones := make([]int, 2*len(stones))
 	for _, stone := range stones {
@@ -116,18 +124,8 @@ func stepPreallocate(stones []int) []int {
 	return newStones[:nStones]
 }
 
-func blink(stones []int, n int) []int {
-	newStones := stones
-	for i := range n {
-		// newStones = stepPreallocate(newStones)
-		newStones = stepSimple(newStones)
-		fmt.Print("\033[G\033[K")
-		fmt.Printf("%2d/%2d\n", i, n)
-		fmt.Print("\033[A")
-	}
-	return newStones
-}
-
+// blinkRecursive Initial implementation of the recursive blink.
+// Stores the stones in an array, but this is slow.
 func blinkRecursive(stones []int, n int) int {
 	if n == 0 {
 		return len(stones)
@@ -159,6 +157,66 @@ func blinkRecursive(stones []int, n int) int {
 	return result
 }
 
+// Cached A key in the cache.
+type Cached struct {
+	stone int
+	blinks int
+}
+
+// blinkRecursiveNoArrayCached Compute the number of stones after n
+// blinks given the starting stone. No array is used to keep track of
+// the current stones, and a cache is used to short-circuit computations that
+// we've already done.
+func blinkRecursiveNoArrayCached(stone int, n int, cache map[Cached]int) int {
+	if n == 0 {
+		return 1
+	}
+
+	result, exists := cache[Cached{stone, n}]
+	if exists {
+		return result
+	}
+
+	if stone == 0 {
+		value := blinkRecursiveNoArrayCached(1, n-1, cache)
+		cache[Cached{1, n-1}] = value
+		result += value
+	} else {
+		nDigits := countDigits(stone)
+		if nDigits % 2 == 0 {
+			factor := intPow(10, nDigits/2)
+
+			// Find the first new stone value by moving the decimal over
+			// by half the number of digits; int division drops the right
+			// half of the digits
+			left := stone / factor
+			value := blinkRecursiveNoArrayCached(left, n-1, cache)
+			cache[Cached{left, n-1}] = value
+			result += value
+
+			// Second new stone value is just the original value of the stone
+			// minus the first half of the digits
+			right := stone - (left*factor)
+			value = blinkRecursiveNoArrayCached(right, n-1, cache)
+			cache[Cached{right, n-1}] = value
+			result += value
+		} else {
+			newStone := stone*2024
+			value := blinkRecursiveNoArrayCached(newStone, n-1, cache)
+			cache[Cached{newStone, n-1}] = value
+			result += value
+		}
+	}
+	cache[Cached{stone, n}] = result
+	return result
+}
+
+// blinkRecursiveNoArray Compute the number of stones after n blinks
+// given the starting stone. No array needed to keep track of the current
+// set of stones; it's all stored in the stack.
+//
+// Note this will not converge quick enough for part 2 - you _need_ caching
+// to make it fast enough.
 func blinkRecursiveNoArray(stone int, n int) int {
 	if n == 0 {
 		return 1
@@ -188,43 +246,27 @@ func blinkRecursiveNoArray(stone int, n int) int {
 	return result
 }
 
+// lenAfterNBlinks Compute the number of stones after a given number of blinks.
+// Prints a progress bar as it goes, but caching makes this so fast it's unnecessary.
+//
+// For 75 blinks, the cache length is 134k entries, but the number of stones is
+// 220357186726677. It saves a huge amount of work, and the computation runs almost
+// instantly.
+func lenAfterNBlinks(stones []int, blinks int) int {
+	cache := make(map[Cached]int)
+	result := 0
+	for i, stone := range stones {
+		result += blinkRecursiveNoArrayCached(stone, blinks, cache)
+		fmt.Print("\033[G\033[K")
+		fmt.Printf("stone %2d/%2d\n", i, len(stones)-1)
+		fmt.Print("\033[A")
+	}
+	return result
+}
+
 func Run() {
 	stones := readData()
 
-	// f, err := os.Create("cpu_step_recursive_no_array.prof")
-	// if err != nil {
-	// 	log.Fatal("Couldn't create CPU profile: ", err)
-	// }
-	// defer f.Close()
-	//
-	// if err := pprof.StartCPUProfile(f); err != nil {
-	// 	log.Fatal("Couldn't start CPU profile: ", err)
-	// }
-	// defer pprof.StopCPUProfile()
-
-	// stones = blink(stones, 25)
-	// fmt.Println("[d11.1] Number of stones after 25 blinks: ", len(stones))
-	// stones = blink(stones, 47)
-
-
-	// result := 0
-	// for _, stone := range stones {
-	// 	result += len(blink([]int{stone}, 40))
-	// }
-
-	// fmt.Println("[d11.2] Number of stones after 75 blinks: ", result)
-	// fmt.Println("[d11.2] Number of stones after 75 blinks: ", len(stones))
-
-	// fmt.Println("[d11.2] Number of stones after 6 blinks: ", blinkRecursive(stones, 6))
-	// fmt.Println("[d11.2] Number of stones after 25 blinks: ", blinkRecursive(stones, 25))
-
-	result := 0
-	for i, stone := range stones {
-		result += blinkRecursiveNoArray(stone, 47)
-		fmt.Print("\033[G\033[K")
-		fmt.Printf("stone %2d/%2d\n", i, len(stones))
-		fmt.Print("\033[A")
-	}
-	fmt.Println("[d11.2] Number of stones after 40 blinks: ", result)
-	// fmt.Println("[d11.2] Number of stones after 25 blinks: ", blinkRecursive(stones, 25))
+	fmt.Println("[d11.1] Number of stones after 25 blinks:", lenAfterNBlinks(stones, 25))
+	fmt.Println("[d11.2] Number of stones after 75 blinks:", lenAfterNBlinks(stones, 75))
 }
