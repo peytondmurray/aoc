@@ -11,7 +11,8 @@ import (
 	// "aoc2024/d8"
 	// "aoc2024/d9"
 	// "aoc2024/d10"
-	"aoc2024/d11"
+	// "aoc2024/d11"
+	"aoc2024/d12"
 )
 
 func main() {
@@ -25,5 +26,6 @@ func main() {
 	// d8.Run()
 	// d9.Run()
 	// d10.Run()
-	d11.Run()
+	// d11.Run()
+	d12.Run()
 }
