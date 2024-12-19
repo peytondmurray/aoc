@@ -8,7 +8,8 @@ import (
 )
 
 func readData() [][]string {
-	file, err := os.Open("d12/input2")
+	file, err := os.Open("d12/input")
+	// file, err := os.Open("d12/input2")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,95 +45,99 @@ type Location struct {
 	y int
 }
 
-// func parseRegions(data [][]string) map[string]*Region {
-//
-// 	regions := make(map[string]*Region)
-//
-// 	// Iterating across the array from left to right, top to bottom.
-// 	// Only need to check left and up to adjust perimeter of each
-// 	// region.
-// 	for i, row := range data {
-// 		for j, char := range row {
-// 			if region, exists := regions[char]; exists {
-// 				region.area++
-//
-// 				// Up, down, left, right of current location
-// 				region.perimeter += 4
-//
-// 				// If there's a square to the left, remove one fence for the
-// 				// current square, and another for the previous square too
-// 				if _, locExists := region.locations[Location{j-1, i}]; locExists {
-// 					region.perimeter -= 2
-// 				}
-//
-// 				// Similar for the neighbor to the top
-// 				if _, locExists := region.locations[Location{j, i-1}]; locExists {
-// 					region.perimeter -= 2
-// 				}
-// 				region.locations[Location{j, i}] = struct{}{}
-// 			} else {
-// 				locs := make(map[Location]struct{})
-// 				locs[Location{j, i}] = struct{}{}
-// 				regions[char] = &Region{char, 1, 4, locs}
-// 			}
-// 		}
-// 	}
-// 	return regions
-// }
+func explore(data [][]string, char string, location Location, visited map[Location]string) map[Location]struct{} {
+	if location.x < 0 || location.x >= len(data[0]) || location.y < 0 || location.y >= len(data) {
+		return make(map[Location]struct{})
+	}
 
-func explore(data [][]string, location Location, visited map[Location]string) []Location {
-	char := data[location.y][location.x]
+	if data[location.y][location.x] != char {
+		return make(map[Location]struct{})
+	}
 	visited[location] = char
 
-	up := Location{location.y - 1, location.x}
-	right := Location{location.y, location.x + 1}
-	down := Location{location.y+1, location.x}
-	left := Location{location.y, location.x-1}
+	up := Location{location.x, location.y-1}
+	right := Location{location.x+1, location.y}
+	down := Location{location.x, location.y+1}
+	left := Location{location.x-1, location.y}
 
-	var locations []Location
+	locations := make(map[Location]struct{})
+	locations[location] = struct{}{}
 	if up.y >= 0 {
 		if _, exists := visited[up]; !exists {
-			for _, loc := range explore(data, up, visited) {
-				locations = append(locations, loc)
+			for loc := range explore(data, char, up, visited) {
+				locations[loc] = struct{}{}
 			}
 		}
 	}
 
 	if right.x < len(data[0]) {
 		if _, exists := visited[right]; !exists {
-			for _, loc := range explore(data, right, visited) {
-				locations = append(locations, loc)
+			for loc := range explore(data, char, right, visited) {
+				locations[loc] = struct{}{}
 			}
 		}
 	}
 
 	if down.y < len(data) {
 		if _, exists := visited[down]; !exists {
-			for _, loc := range explore(data, down, visited) {
-				locations = append(locations, loc)
+			for loc := range explore(data, char, down, visited) {
+				locations[loc] = struct{}{}
 			}
 		}
 	}
 	if left.x >= 0 {
 		if _, exists := visited[left]; !exists {
-			for _, loc := range explore(data, left, visited) {
-				locations = append(locations, loc)
+			for loc := range explore(data, char, left, visited) {
+				locations[loc] = struct{}{}
 			}
 		}
 	}
 	return locations
 }
 
+func analyze(locations map[Location]struct{}) (int, int) {
+	perimeter := 0
+	for loc := range locations {
+		up := Location{loc.x, loc.y-1}
+		right := Location{loc.x+1, loc.y}
+		down := Location{loc.x, loc.y+1}
+		left := Location{loc.x-1, loc.y}
+
+		perimeter += 4
+		if _, exists := locations[up]; exists {
+			perimeter--
+		}
+		if _, exists := locations[down]; exists {
+			perimeter--
+		}
+		if _, exists := locations[left]; exists {
+			perimeter--
+		}
+		if _, exists := locations[right]; exists {
+			perimeter--
+		}
+	}
+
+	return len(locations), perimeter
+}
+
+func parseRegion(data [][]string, location Location, visited map[Location]string) Region {
+	char := data[location.y][location.x]
+	locations := explore(data, char, location, visited)
+	area, perimeter := analyze(locations)
+
+	return Region{char, area, perimeter, locations}
+}
+
 func parseRegions(data [][]string) []Region {
-	visited := map[Location]string
+	visited := make(map[Location]string)
 	var regions []Region
 
 	for i, row := range data {
 		for j := range row {
 			loc := Location{j, i}
-
 			if _, exists := visited[loc]; !exists {
-				regions = append(regions, explore(data, loc, visited))
+				regions = append(regions, parseRegion(data, loc, visited))
 			}
 		}
 	}
@@ -140,7 +145,7 @@ func parseRegions(data [][]string) []Region {
 	return regions
 }
 
-func computePrice(regions map[string]*Region) int {
+func computePrice(regions []Region) int {
 	result := 0
 	for _, region := range regions {
 		pt := region.area*region.perimeter
