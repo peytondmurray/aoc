@@ -20,21 +20,6 @@ type ClawMachine struct {
 	prize Location
 }
 
-func (a *ClawMachine) findMinCost(
-	target Location,
-	factor int,
-	nab Nab,
-	cost int,
-	cache map[Location]int,
-) (int, Nab) {
-	loc := nab.loc(a.A, a.B)
-
-	if loc.x > factor*target.x || loc.y > factor*target.y {
-		return 0, 0
-	}
-	return
-}
-
 type Location struct {
 	x int
 	y int
@@ -86,114 +71,74 @@ func readData() []ClawMachine {
 	return result
 }
 
-func solve(machines []ClawMachine) int {
+func isIntegral(val float32) bool {
+	return val == float32(int(val))
+}
+
+// solveMachine For a given machine, the problem can be written as
+// a system of linear equations:
+//
+// [ Ax Bx ][ Na ]  = [ Px ]
+// [ Ay By ][ Nb ]  = [ Py ]
+//
+// Where {Na, Nb} are the number of button presses of A and B,
+// {Px, Py} are the prize location (x, y), and {Ax, Ay, Bx, By}
+// are how much the A and B buttons move the claw on each press.
+//
+// As long as the movements of the claw are linearly independent,
+// there's always a unique {Na, Nb} that can be found that can
+// be made to get to {Px, Py}. The solutions are those for which
+// there are _integer_ numbers of presses of A and B.
+//
+// To solve this, just invert the 2x2 matrix and multiply by
+// {Px, Py}. Inversion will fail if the claw vectors are not
+// linearly independent.
+func solveMachine(machine ClawMachine, factor int) int {
+
+	px := machine.prize.x + factor
+	py := machine.prize.y + factor
+
+	ax := machine.A.dx
+	ay := machine.A.dy
+
+	bx := machine.B.dx
+	by := machine.B.dy
+
+	na := int(float64(px*by - py*bx)/float64(ax*by - ay*bx))
+	nb := int(float64(py*ax - px*ay)/float64(ax*by - ay*bx))
+
+	// The truncation above only ever reduces the number of presses
+	// of each button; we therefore only need to increase each button
+	// press by 1 to see if it gets us the prize.
+	if (na+1)*ax + nb*bx == px && (na+1)*ay + nb*by == py {
+		return 3*(na+1) + nb
+	}
+	if na*ax + (nb+1)*bx == px && na*ay + (nb+1)*by == py {
+		return 3*na + nb+1
+	}
+	if (na+1)*ax + (nb+1)*bx == px && (na+1)*ay + (nb+1)*by == py {
+		return 3*(na+1) + nb+1
+	}
+	if na*ax + nb*bx == px && na*ay + nb*by == py {
+		// If na and nb are already integral, no need for adjustment
+		return 3*na + nb
+	}
+
+	// No solution exists
+	return 0
+}
+
+
+func solve(machines []ClawMachine, factor int) int {
 	result := 0
 	for _, machine := range machines {
-		result += solveMachine(machine)
-	}
-	return result
-}
-
-
-func solveMachine(machine ClawMachine) int {
-	minCost := 0
-	for i := range 100 {
-		for j := range 100 {
-			if (
-				(i*machine.A.dx + j*machine.B.dx) == machine.prize.x &&
-				(i*machine.A.dy + j*machine.B.dy) == machine.prize.y) {
-
-				// Cost: A - 3 tokens, B - 1 token
-				cost := i*3 + j
-				if minCost == 0 || cost < minCost {
-					minCost = cost
-				}
-			}
-		}
-	}
-	return minCost
-}
-
-func solveMachineP2(machine ClawMachine, factor int) int {
-	cost, nab := findMinCost(
-		machine.prize,
-		machine.A,
-		machine.B,
-		factor,
-		Nab{0, 0},
-		0,
-		make(map[Location]int),
-	)
-	return cost
-}
-
-// func findMinCost(
-// 	target Location,
-// 	A Button,
-// 	B Button,
-// 	factor int,
-// 	nab Nab,
-// 	cost int,
-// 	cache map[Location]int,
-// ) (int, Nab) {
-// 	loc := nab.loc(A, B)
-// 	if loc.x > factor*target.x || loc.y > factor*target.y {
-// 		return 0, Nab{}
-// 	}
-// 	if loc.x == factor*target.x && loc.y == factor*target.y {
-// 		return cost, nab
-// 	}
-//
-// 	// Minimum cost has already been cached
-// 	if cachedCost, exists := cache[nab]; exists {
-// 		return cost + cachedCost, nab
-// 	}
-//
-// 	ca := findMinCost(target, A, B, factor, Location{loc.x+A.dx, loc.y+A.dy}, cost + 3, cache)
-// 	cb := findMinCost(target, A, B, factor, Location{loc.x+B.dx, loc.y+B.dy}, cost + 1, cache)
-//
-// 	if ca > 0 {
-// 		if cb > 0 {
-// 			cost := min(ca, cb)
-// 			cache[loc] = cost
-// 			return cost
-// 		}
-// 		cache[loc] = ca
-// 		return ca
-// 	}
-//
-// 	if cb > 0 {
-// 		cache[loc] = cb
-// 		return cb
-// 	}
-// 	cache[loc] = 0
-// 	return 0
-// }
-
-type Nab struct {
-	na int
-	nb int
-}
-
-func (a *Nab) cost() int {
-	return a.na*3 + a.nb
-}
-
-func (a *Nab) loc(A Button, B Button) Location {
-	return Location{a.na*A.dx + a.nb*B.dx, a.na*A.dy + a.nb*B.dy}
-}
-
-func solveP2(machines []ClawMachine) int {
-	result := 0
-	for _, machine := range machines {
-		result += solveMachineP2(machine, 10000000000000)
+		result += solveMachine(machine, factor)
 	}
 	return result
 }
 
 func Run() {
-
 	data := readData()
-	fmt.Println("[d13.1] tokens:", solve(data))
-	fmt.Println("[d13.2] tokens:", solveP2(data))
+	fmt.Println("[d13.1] tokens:", solve(data, 0))
+	fmt.Println("[d13.2] tokens:", solve(data, 10000000000000))
 }
