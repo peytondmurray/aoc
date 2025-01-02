@@ -15,7 +15,7 @@ import (
 	// "aoc2024/d12"
 	// "aoc2024/d13"
 	// "aoc2024/d14"
-	"aoc2025/d14"
+	"aoc2024/d15"
 )
 
 func main() {
