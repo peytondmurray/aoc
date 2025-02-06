@@ -108,10 +108,11 @@ func readData() Grid {
 	return newGrid(arr)
 }
 
-func (a *Grid) solve(loc Location, dir Direction, visited map[LocDir]int, currentCost int) (int, bool) {
+func (a *Grid) solve(loc Location, dir Direction, visited map[LocDir]int, currentCost int, paths map[Location]struct{}) (int, bool) {
 
 	// Reached the end
 	if loc == a.end {
+		paths[loc] = struct{}{}
 		return currentCost, true
 	}
 
@@ -126,16 +127,21 @@ func (a *Grid) solve(loc Location, dir Direction, visited map[LocDir]int, curren
 	// Store the cost of getting to the current location
 	visited[state] = currentCost
 
+	var possiblePaths []map[Location]struct{}
+
 	var costs []int
 	leftDir := dir.left()
 	leftLoc := loc.step(leftDir)
 	if a.at(leftLoc) != "#" {
 		nextCost := 1000 + currentCost
 		cachedCost, exists := visited[LocDir{loc, leftDir}]
-		if !exists || cachedCost > nextCost {
-			restCost, okay := a.solve(loc, leftDir, visited, nextCost)
+		if !exists || cachedCost >= nextCost {
+
+			restPath := make(map[Location]struct{})
+			restCost, okay := a.solve(loc, leftDir, visited, nextCost, restPath)
 			if okay {
 				costs = append(costs, restCost)
+				possiblePaths = append(possiblePaths, restPath)
 			}
 		}
 	}
@@ -145,10 +151,13 @@ func (a *Grid) solve(loc Location, dir Direction, visited map[LocDir]int, curren
 	if a.at(rightLoc) != "#" {
 		nextCost := 1000 + currentCost
 		cachedCost, exists := visited[LocDir{loc, rightDir}]
-		if !exists || cachedCost > nextCost {
-			restCost, okay := a.solve(loc, rightDir, visited, nextCost)
+		if !exists || cachedCost >= nextCost {
+
+			restPath := make(map[Location]struct{})
+			restCost, okay := a.solve(loc, rightDir, visited, nextCost, restPath)
 			if okay {
 				costs = append(costs, restCost)
+				possiblePaths = append(possiblePaths, restPath)
 			}
 		}
 	}
@@ -157,10 +166,13 @@ func (a *Grid) solve(loc Location, dir Direction, visited map[LocDir]int, curren
 	if a.at(forwardLoc) != "#" {
 		nextCost := 1 + currentCost
 		cachedCost, exists := visited[LocDir{forwardLoc, dir}]
-		if !exists || cachedCost > nextCost {
-			restCost, okay := a.solve(forwardLoc, dir, visited, nextCost)
+		if !exists || cachedCost >= nextCost {
+
+			restPath := make(map[Location]struct{})
+			restCost, okay := a.solve(forwardLoc, dir, visited, nextCost, restPath)
 			if okay {
 				costs = append(costs, restCost)
+				possiblePaths = append(possiblePaths, restPath)
 			}
 		}
 	}
@@ -168,13 +180,66 @@ func (a *Grid) solve(loc Location, dir Direction, visited map[LocDir]int, curren
 	if len(costs) == 0 {
 		return 0, false
 	}
+
+	// Copy the minimum paths into the paths map
+	for _, i := range idxmin(costs) {
+		for location := range possiblePaths[i] {
+			paths[location] = struct{}{}
+		}
+	}
+	// Include the current position as well
+	paths[loc] = struct{}{}
 	return slices.Min(costs), true
+}
+
+func idxmin(arr []int) []int {
+	minimum := arr[0]
+	iMin := []int{0}
+
+	for i, value := range arr {
+		if value < minimum {
+			minimum = value
+			iMin = []int{i}
+		} else if value == minimum {
+			iMin = append(iMin, i)
+		}
+	}
+
+	return iMin
+}
+
+func (a *Grid) print(paths map[Location]struct{}) {
+
+	// Copy the grid into a new array so that we can draw the path on it
+	arr := make([][]string, len(a.arr))
+	for i, row := range a.arr {
+		arr[i] = make([]string, len(row))
+		for j, char := range row {
+			arr[i][j] = char
+		}
+	}
+
+	// Iterate through the locations visited and insert them into the array
+	for loc := range paths {
+		arr[loc.y][loc.x] = "O"
+	}
+
+	// Print the array
+	fmt.Println()
+	for _, row := range arr {
+		for _, char := range row {
+			fmt.Print(char)
+		}
+		fmt.Println()
+	}
 }
 
 func Run() {
 	grid := readData()
 
-	minCost, okay := grid.solve(grid.start, East, make(map[LocDir]int), 0)
-	fmt.Println("[d16.1] min cost:", minCost, okay)
-	fmt.Println("[d16.2] min cost:", minCost, okay)
+	paths := make(map[Location]struct{})
+	minCost, _ := grid.solve(grid.start, East, make(map[LocDir]int), 0, paths)
+	grid.print(paths)
+	fmt.Println("[d16.1] min cost:", minCost)
+	fmt.Println("[d16.2] optimal seats:", len(paths))
 }
